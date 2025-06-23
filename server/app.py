@@ -1,55 +1,50 @@
-#!/usr/bin/env python3
-
 from flask import Flask, jsonify, request, make_response
 from flask_migrate import Migrate
-from flask_restful import Api, Resource
-
-from models import db, Plant
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///plants.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = False
 
+db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-db.init_app(app)
+CORS(app)
 
-api = Api(app)
+class Plant(db.Model):
+    __tablename__ = 'plants'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    image = db.Column(db.String)
+    price = db.Column(db.Float)
+    is_in_stock = db.Column(db.Boolean)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'image': self.image,
+            'price': self.price,
+            'is_in_stock': self.is_in_stock
+        }
 
-class Plants(Resource):
+@app.route('/plants/<int:id>', methods=['PATCH'])
+def update_plant(id):
+    plant = Plant.query.get_or_404(id)
+    data = request.get_json()
+    if 'is_in_stock' in data:
+        plant.is_in_stock = data['is_in_stock']
+    db.session.commit()
+    response = make_response(jsonify(plant.to_dict()), 200)
+    response.headers['Content-Type'] = 'application/json'
+    return response
 
-    def get(self):
-        plants = [plant.to_dict() for plant in Plant.query.all()]
-        return make_response(jsonify(plants), 200)
-
-    def post(self):
-        data = request.get_json()
-
-        new_plant = Plant(
-            name=data['name'],
-            image=data['image'],
-            price=data['price'],
-        )
-
-        db.session.add(new_plant)
-        db.session.commit()
-
-        return make_response(new_plant.to_dict(), 201)
-
-
-api.add_resource(Plants, '/plants')
-
-
-class PlantByID(Resource):
-
-    def get(self, id):
-        plant = Plant.query.filter_by(id=id).first().to_dict()
-        return make_response(jsonify(plant), 200)
-
-
-api.add_resource(PlantByID, '/plants/<int:id>')
-
+@app.route('/plants/<int:id>', methods=['DELETE'])
+def delete_plant(id):
+    plant = Plant.query.get_or_404(id)
+    db.session.delete(plant)
+    db.session.commit()
+    return make_response('', 204)
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
