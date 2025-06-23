@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, abort
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -30,7 +30,9 @@ class Plant(db.Model):
 
 @app.route('/plants/<int:id>', methods=['PATCH'])
 def update_plant(id):
-    plant = Plant.query.get_or_404(id)
+    plant = db.session.get(Plant, id)
+    if not plant:
+        abort(404)
     data = request.get_json()
     if 'is_in_stock' in data:
         plant.is_in_stock = data['is_in_stock']
@@ -41,7 +43,9 @@ def update_plant(id):
 
 @app.route('/plants/<int:id>', methods=['DELETE'])
 def delete_plant(id):
-    plant = Plant.query.get_or_404(id)
+    plant = db.session.get(Plant, id)
+    if not plant:
+        abort(404)
     db.session.delete(plant)
     db.session.commit()
     return make_response('', 204)

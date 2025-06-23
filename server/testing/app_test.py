@@ -27,7 +27,7 @@ def test_patch_plant(client):
     assert data['price'] == 11.50
     assert data['is_in_stock'] == False
     with app.app_context():
-        plant = Plant.query.get(1)
+        plant = db.session.get(Plant, 1)
         assert plant.is_in_stock == False
 
 def test_delete_plant(client):
@@ -35,7 +35,7 @@ def test_delete_plant(client):
     assert response.status_code == 204
     assert response.data == b''
     with app.app_context():
-        plant = Plant.query.get(1)
+        plant = db.session.get(Plant, 1)
         assert plant is None
 
 def test_patch_plant_not_found(client):
